@@ -184,7 +184,14 @@ async function staffLoad0(){const e=$('#stf');if(!e)return;let d=await sf({actio
 async function staffAdd(){const b={action:'create',name:$('#un').value.trim(),email:$('#ue').value.trim().toLowerCase(),password:$('#up').value,role:$('#ur').value};if(!b.name||!b.email||b.password.length<6)return alert('Введите имя, почту и пароль (минимум 6 символов)');if(await sf(b)){toast('Сотрудник добавлен');staffLoad()}}
 async function staffUp(id,o){if(await sf({action:'update',id,...o}))staffLoad()}
 function staffPw(id){const p=prompt('Новый пароль (минимум 6 символов)');if(p&&p.length>=6)staffUp(id,{password:p})}
-const set0=V.set;V.set=function(){set0();if(sb)staffLoad()};
+const set0=V.set;V.set=function(){set0();if(sb)staffLoad();if(me.role=='admin')$('#v').insertAdjacentHTML('beforeend','<div class="card" style="border-color:#ef4444"><h3 style="margin-top:0;color:#ef4444">Опасная зона</h3><p class="mu">Только админ. Перед удалением нужен пароль админа, копия данных скачивается автоматически.</p><div class="bar"><button class="dn" onclick="wipeAll(false)">Удалить операции</button><button class="dn" onclick="wipeAll(true)">Удалить всё</button></div><p class="mu">«Операции» — приходы, расходы, продажи, деньги, смены, история. «Всё» — ещё и товары с контрагентами. Настройки организации и сотрудники остаются.</p></div>')};
+async function wipeAll(full){if(me.role!='admin')return alert('Только админ');
+ const cl=full?['prod','party','rec','iss','sale','pay','shift','log']:['rec','iss','sale','pay','shift','log'];
+ if(prompt('Будет удалено: '+(full?'ВСЁ (операции, товары, контрагенты)':'все операции (приходы, расходы, продажи, деньги, смены, история)')+'. Это нельзя отменить. Для подтверждения напишите УДАЛИТЬ')!=='УДАЛИТЬ')return;
+ const ap=await askAdmin('Введите почту и пароль админа для удаления данных');if(!ap)return;
+ const u=URL.createObjectURL(new Blob([JSON.stringify(D)],{type:'application/json'})),k=document.createElement('a');k.href=u;k.download='ae7ombor_backup_'+today()+'.json';document.body.appendChild(k);k.click();k.remove();
+ const r=await sb.from('docs').delete().in('coll',cl);if(r.error)return alert('Не удалось удалить: '+r.error.message);
+ cl.forEach(c=>D[c]=[]);await put('log',{id:Date.now(),date:today(),time:hhmm(),by:me.name,a:'Удалены данные ('+(full?'всё':'операции')+'), подтвердил '+ap});alert('Готово. Копия данных скачана на ваше устройство.');render()}
 
 IC.chk='M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6';
 async function withdraw(){const s=curShift();if(!s)return;let ok=me.name;if(me.role!='admin'){ok=await askAdmin('Изъятие из кассы подтверждает админ');if(!ok)return}const t=shiftTot(s),a=+prompt('Сумма изъятия из кассы (сейчас в кассе '+nf(t.exp)+')');if(!(a>0))return;if(a>t.exp&&!confirm('Больше, чем должно быть в кассе. Продолжить?'))return;const why=(prompt('Причина (например: инкассация, закупка)')||'').trim();if(!why)return alert('Укажите причину');
